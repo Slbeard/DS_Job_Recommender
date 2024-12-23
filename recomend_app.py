@@ -43,22 +43,35 @@ similarity_matrix = cosine_similarity(X)
 indices = pd.Series(glassdoor_clean.index, index=glassdoor_clean['job_title']).drop_duplicates()
 
 def get_recommendations(experience_years, desired_salary, skills, city, state, similarity_matrix=similarity_matrix):
+    # Initial DataFrame for filtering
+    filtered_jobs = glassdoor_clean.copy()
+
     # Filter jobs based on experience and salary
-    filtered_jobs = glassdoor_clean[
-        (glassdoor_clean['experience_years'] <= experience_years) &
-        (glassdoor_clean['avg_salary'] >= desired_salary)
+    filtered_jobs = filtered_jobs[
+        (filtered_jobs['experience_years'] <= experience_years) &
+        (filtered_jobs['avg_salary'] >= desired_salary)
     ]
     
+    st.write(f"Filtered jobs after experience and salary: {filtered_jobs.shape[0]} jobs.")
+
     # Check for matching skills
     if skills:
         for skill in skills:
             filtered_jobs = filtered_jobs[filtered_jobs[skill.lower()] == 1]  # Assuming binary skill columns
+        st.write(f"Filtered jobs after skills: {filtered_jobs.shape[0]} jobs.")
 
     # Filter by city and state (if provided)
     if city:
         filtered_jobs = filtered_jobs[filtered_jobs['city'].str.contains(city, case=False, na=False)]
+        st.write(f"Filtered jobs after city filter: {filtered_jobs.shape[0]} jobs.")
     if state:
         filtered_jobs = filtered_jobs[filtered_jobs['state'].str.contains(state, case=False, na=False)]
+        st.write(f"Filtered jobs after state filter: {filtered_jobs.shape[0]} jobs.")
+
+    # If no jobs are left after filtering, return an empty result
+    if filtered_jobs.empty:
+        st.write("No matching jobs found after filtering.")
+        return filtered_jobs  # Returning empty DataFrame if no jobs match
 
     # Get indices of filtered jobs
     filtered_indices = filtered_jobs.index.tolist()
@@ -68,8 +81,9 @@ def get_recommendations(experience_years, desired_salary, skills, city, state, s
     average_similarity = similarity_scores.mean(axis=0)  # Average similarity for each job
     sorted_indices = np.argsort(average_similarity)[::-1]  # Sort by descending similarity
 
-    # Return top 15 recommended job titles
-    return glassdoor_clean.iloc[sorted_indices[:15]][['job_title', 'company', 'avg_salary', 'experience_years']]
+    # Return top 15 recommended job titles with experience years and avg salary
+    recommended_jobs = filtered_jobs.iloc[sorted_indices[:15]]
+    return recommended_jobs[['job_title', 'company', 'avg_salary', 'experience_years']]
 
 recommended_jobs = None  # Initialize the variable
 
@@ -101,13 +115,16 @@ if st.button('Show Recommendation'):
         city=city,
         state=state
     )
-st.subheader('Recommended Jobs:')
-if recommended_jobs is None or recommended_jobs.empty:
+    
+    st.subheader('Recommended Jobs:')
+    
+if recommended_jobs.empty:
     st.write("No matching jobs found.")
 else:
     for _, job in recommended_jobs.iterrows():
+        # Display job details, including experience years and salary formatted as requested
         st.write(f"**Job Title:** {job['job_title']}")
         st.write(f"**Company:** {job['company']}")
-        st.write(f"**Average Salary:** ${job['avg_salary']:.0f}K")
+        st.write(f"**Average Salary:** ${job['avg_salary']:.0f}K")  # Format salary to 'K'
         st.write(f"**Experience Required:** {job['experience_years']} years")
         st.write("---")
