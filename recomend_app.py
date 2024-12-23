@@ -49,7 +49,7 @@ def get_recommendations(experience_years, desired_salary, skills, city, state, s
         (filtered_jobs['experience_years'] <= experience_years) &
         (filtered_jobs['avg_salary'] >= desired_salary)
     ]
-
+    
     st.write(f"Filtered jobs after experience and salary: {filtered_jobs.shape[0]} jobs.")
 
     # Check for matching skills
@@ -74,19 +74,17 @@ def get_recommendations(experience_years, desired_salary, skills, city, state, s
     # Get indices of filtered jobs
     filtered_indices = filtered_jobs.index.tolist()
 
-    # Calculate similarity for filtered jobs using the filtered indices
+    # Calculate similarity for filtered jobs
     similarity_scores = similarity_matrix[filtered_indices]
-    average_similarity = similarity_scores.mean(axis=1)  # Average similarity for each job (row-wise)
+    average_similarity = similarity_scores.mean(axis=0)  # Average similarity for each job
     sorted_indices = np.argsort(average_similarity)[::-1]  # Sort by descending similarity
 
     # Ensure we return no more than the number of available jobs
     top_n = min(15, len(sorted_indices))  # Set the top n to be the lesser of 15 or the number of available jobs
 
-    # Get the top jobs based on sorted indices and filtered jobs
-    top_jobs_indices = filtered_indices[sorted_indices[:top_n]]
+    # Use sorted_indices to index filtered_jobs and return the top jobs
+    recommended_jobs = filtered_jobs.iloc[sorted_indices[:top_n]]
 
-    # Return the top recommended jobs with job title, company, salary, and experience years
-    recommended_jobs = filtered_jobs.loc[top_jobs_indices]
     return recommended_jobs[['job_title', 'company', 'avg_salary', 'experience_years']]
 
 # Streamlit app layout
