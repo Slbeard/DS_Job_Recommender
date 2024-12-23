@@ -82,8 +82,11 @@ def get_recommendations(experience_years, desired_salary, skills, city, state, s
     # Ensure we return no more than the number of available jobs
     top_n = len(sorted_indices)  # Set the top the number of available jobs
 
+    # Safely select the top N recommended jobs
+    sorted_indices = sorted_indices[:top_n]  # Only slice the top N
+    
     # Use sorted_indices to index filtered_jobs and return the top jobs
-    recommended_jobs = filtered_jobs.iloc[sorted_indices[:top_n]]
+    recommended_jobs = filtered_jobs.iloc[sorted_indices]
 
     return recommended_jobs[['job_title', 'company', 'avg_salary', 'experience_years']]
 
