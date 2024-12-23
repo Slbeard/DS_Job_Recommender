@@ -79,13 +79,13 @@ def get_recommendations(experience_years, desired_salary, skills, city, state, s
     average_similarity = similarity_scores.mean(axis=0)  # Average similarity for each job
     sorted_indices = np.argsort(average_similarity)[::-1]  # Sort by descending similarity
 
-    # Ensure we return no more than the number of available jobs
-    top_n = len(sorted_indices)  # Set the top the number of available jobs
+    # Ensure we do not select more jobs than are available in filtered_jobs
+    top_n = min(15, len(filtered_jobs))  # Set top_n to the lesser of 15 or the number of available jobs
 
-    # Safely select the top N recommended jobs
-    sorted_indices = sorted_indices[::top_n]  # Only slice the top N
-    
-    # Use sorted_indices to index filtered_jobs and return the top jobs
+    # Adjust sorted_indices to map back to the filtered jobs index
+    sorted_indices = sorted_indices[:top_n]
+
+    # Use the filtered_jobs index to select the top recommended jobs
     recommended_jobs = filtered_jobs.iloc[sorted_indices]
 
     return recommended_jobs[['job_title', 'company', 'avg_salary', 'experience_years']]
