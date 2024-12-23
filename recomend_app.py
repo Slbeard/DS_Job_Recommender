@@ -72,6 +72,7 @@ def get_recommendations(experience_years, desired_salary, skills, city, state, s
     return glassdoor_clean.iloc[sorted_indices[:15]][['job_title', 'company', 'avg_salary']]
   
 st.header('Data Science Jobs Recommender')
+recommended_jobs = None  # Initialize the variable
 
 # User input for years of experience
 experience_years = st.number_input('Enter your years of work experience:', min_value=0, max_value=50, value=1)
