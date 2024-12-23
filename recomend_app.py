@@ -69,7 +69,7 @@ def get_recommendations(experience_years, desired_salary, skills, city, state, s
     sorted_indices = np.argsort(average_similarity)[::-1]  # Sort by descending similarity
 
     # Return top 15 recommended job titles
-    return glassdoor_clean.iloc[sorted_indices[:15]][['job_title', 'company', 'avg_salary']]
+    return glassdoor_clean.iloc[sorted_indices[:15]][['job_title', 'company', 'avg_salary', 'experience_years']]
 
 recommended_jobs = None  # Initialize the variable
 
@@ -80,7 +80,7 @@ recommended_jobs = None  # Initialize the variable
 experience_years = st.number_input('Enter your years of work experience:', min_value=0, max_value=50, value=1)
 
 # User input for desired salary
-desired_salary = st.number_input('Enter your desired salary (in $):', min_value=0, value=50000)
+desired_salary = st.number_input('Enter your desired salary in thousands (to the nearest $1K):', min_value=0, value=50000)
 
 # User input for skills
 skills = st.multiselect(
@@ -109,4 +109,5 @@ else:
         st.write(f"**Job Title:** {job['job_title']}")
         st.write(f"**Company:** {job['company']}")
         st.write(f"**Average Salary:** ${job['avg_salary']:.0f}K")
+        st.write(f"**Experience Required:** {job['experience_years']} years")
         st.write("---")
