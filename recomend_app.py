@@ -42,13 +42,34 @@ similarity_matrix = cosine_similarity(X)
 # Mapping job titles to indices
 indices = pd.Series(glassdoor_clean.index, index=glassdoor_clean['job_title']).drop_duplicates()
 
-def get_recommendations(title, similarity_matrix=similarity_matrix):
-    idx = indices[title]  # Get the index of the selected job
-    sim_scores = list(enumerate(similarity_matrix[idx]))  # Calculate similarity scores
-    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)  # Sort by similarity
-    sim_scores = sim_scores[1:16]  # Get top 15 similar jobs
-    job_indices = [i[0] for i in sim_scores]  # Extract job indices
-    return glassdoor_clean['jobtitle'].iloc[job_indices]  # Return the recommended job titles
+def get_recommendations(experience_years, desired_salary, skills, city, state, similarity_matrix=similarity_matrix):
+    # Filter jobs based on experience and salary
+    filtered_jobs = glassdoor_clean[
+        (glassdoor_clean['experience_years'] <= experience_years) &
+        (glassdoor_clean['avg_salary'] >= desired_salary)
+    ]
+    
+    # Check for matching skills
+    if skills:
+        for skill in skills:
+            filtered_jobs = filtered_jobs[filtered_jobs[skill.lower()] == 1]  # Assuming binary skill columns
+
+    # Filter by city and state (if provided)
+    if city:
+        filtered_jobs = filtered_jobs[filtered_jobs['city'].str.contains(city, case=False, na=False)]
+    if state:
+        filtered_jobs = filtered_jobs[filtered_jobs['state'].str.contains(state, case=False, na=False)]
+
+    # Get indices of filtered jobs
+    filtered_indices = filtered_jobs.index.tolist()
+
+    # Calculate similarity for filtered jobs
+    similarity_scores = similarity_matrix[filtered_indices]
+    average_similarity = similarity_scores.mean(axis=0)  # Average similarity for each job
+    sorted_indices = np.argsort(average_similarity)[::-1]  # Sort by descending similarity
+
+    # Return top 15 recommended job titles
+    return glassdoor_clean['jobtitle'].iloc[sorted_indices[:15]]
   
 st.header('Data Science Jobs Recommender')
 
@@ -71,12 +92,15 @@ state = st.text_input('Enter your preferred state:')
 # Display recommendations on button click
 if st.button('Show Recommendation'):
     recommended_jobs = get_recommendations(
-        experience_years, 
-        desired_salary, 
-        skills, 
-        city, 
-        state
+        experience_years=experience_years,
+        desired_salary=desired_salary,
+        skills=skills,
+        city=city,
+        state=state
     )
     st.subheader('Recommended Jobs:')
-    for job in recommended_jobs:
-        st.write(job)
+    if recommended_jobs.empty:
+        st.write("No matching jobs found.")
+    else:
+        for job in recommended_jobs:
+            st.write(job)
