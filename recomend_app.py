@@ -10,7 +10,7 @@ from sklearn.pipeline import Pipeline
 import string # for streamlining input information
 import streamlit as st # for web app
 
-glassdoor_clean = pd.read_csv('glassdoor_clean.csv',error_bad_lines=False, engine ='python')
+glassdoor_clean = pd.read_csv('glassdoor_clean.csv', encoding='utf-8')
 
 # Preprocessing for numerical features (years of experience and salary)
 numerical_features = ['experience_years', 'python', 'r_script', 'spark', 'aws', 'excel', 'avg_salary']
