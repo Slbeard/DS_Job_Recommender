@@ -87,6 +87,8 @@ def get_recommendations(experience_years, desired_salary, skills, city, state, s
 
     return recommended_jobs[['job_title', 'company', 'avg_salary', 'experience_years']]
 
+recommended_jobs = None  # Initialize the variable
+
 # Streamlit app layout
 st.header('Data Science Jobs Recommender')
 
