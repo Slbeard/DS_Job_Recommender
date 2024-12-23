@@ -82,8 +82,9 @@ def get_recommendations(experience_years, desired_salary, skills, city, state, s
     # Ensure we do not select more jobs than are available in filtered_jobs
     top_n = min(15, len(filtered_jobs))  # Set top_n to the lesser of 15 or the number of available jobs
 
-    # Adjust sorted_indices to map back to the filtered jobs index
-    sorted_indices = sorted_indices[:top_n]
+    # Recompute sorted indices based on filtered DataFrame size
+    sorted_indices = sorted_indices[:top_n]  # Limit sorted indices to the top_n jobs
+    sorted_indices = sorted_indices[sorted_indices < len(filtered_jobs)]  # Ensure indices are within bounds
 
     # Use the filtered_jobs index to select the top recommended jobs
     recommended_jobs = filtered_jobs.iloc[sorted_indices]
