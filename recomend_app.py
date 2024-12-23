@@ -120,7 +120,10 @@ if st.button('Show Recommendation'):
 
 st.subheader('Recommended Jobs:')
 
-if recommended_jobs.empty:
+if recommended_jobs is None:
+    st.write("")
+elif:
+    recommended_jobs.empty:
     st.write("No matching jobs found.")
 else:
     for _, job in recommended_jobs.iterrows():
