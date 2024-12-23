@@ -1,15 +1,13 @@
-# Import Libraries
-import pandas as pd # for data structure and manipulation
-import numpy as np # for analytics and computing
-from sklearn.feature_extraction.text import TfidfVectorizer # for text classification, clustering, and info retrieval
-from sklearn.metrics.pairwise import cosine_similarity # for non-linear similarity measure
+import pandas as pd  # for data structure and manipulation
+import numpy as np  # for analytics and computing
+from sklearn.feature_extraction.text import TfidfVectorizer  # for text classification, clustering, and info retrieval
+from sklearn.metrics.pairwise import cosine_similarity  # for non-linear similarity measure
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-import string # for streamlining input information
-import streamlit as st # for web app
+import streamlit as st  # for web app
 
+# Read and preprocess the data
 glassdoor_clean = pd.read_csv('glassdoor_clean.csv', encoding='utf-8')
 
 # Preprocessing for numerical features (years of experience and salary)
@@ -30,7 +28,7 @@ preprocessor = ColumnTransformer(
         ('cat', categorical_transformer, categorical_features),
         ('text', text_transformer, text_features)
     ],
-    remainder='drop' # Drop other columns not specified in transformers
+    remainder='drop'  # Drop other columns not specified in transformers
 )
 
 # Apply transformations to your dataset
@@ -51,7 +49,7 @@ def get_recommendations(experience_years, desired_salary, skills, city, state, s
         (filtered_jobs['experience_years'] <= experience_years) &
         (filtered_jobs['avg_salary'] >= desired_salary)
     ]
-    
+
     st.write(f"Filtered jobs after experience and salary: {filtered_jobs.shape[0]} jobs.")
 
     # Check for matching skills
@@ -76,27 +74,28 @@ def get_recommendations(experience_years, desired_salary, skills, city, state, s
     # Get indices of filtered jobs
     filtered_indices = filtered_jobs.index.tolist()
 
-    # Calculate similarity for filtered jobs
+    # Calculate similarity for filtered jobs using the filtered indices
     similarity_scores = similarity_matrix[filtered_indices]
-    average_similarity = similarity_scores.mean(axis=0)  # Average similarity for each job
+    average_similarity = similarity_scores.mean(axis=1)  # Average similarity for each job (row-wise)
     sorted_indices = np.argsort(average_similarity)[::-1]  # Sort by descending similarity
 
     # Ensure we return no more than the number of available jobs
     top_n = min(15, len(sorted_indices))  # Set the top n to be the lesser of 15 or the number of available jobs
 
-    # Return top recommended job titles with experience years and avg salary
-    recommended_jobs = filtered_jobs.iloc[sorted_indices[:top_n]]
+    # Get the top jobs based on sorted indices and filtered jobs
+    top_jobs_indices = filtered_indices[sorted_indices[:top_n]]
+
+    # Return the top recommended jobs with job title, company, salary, and experience years
+    recommended_jobs = filtered_jobs.loc[top_jobs_indices]
     return recommended_jobs[['job_title', 'company', 'avg_salary', 'experience_years']]
 
-recommended_jobs = None  # Initialize the variable
-
+# Streamlit app layout
 st.header('Data Science Jobs Recommender')
-recommended_jobs = None  # Initialize the variable
 
 # User input for years of experience
 experience_years = st.number_input('Enter your years of work experience:', min_value=0, max_value=50, value=1)
 
-# User input for desired salary
+# User input for desired salary (in thousands)
 desired_salary = st.number_input('Enter your desired salary in thousands (to the nearest $1K):', min_value=0, value=50000)
 
 # User input for skills
@@ -118,16 +117,15 @@ if st.button('Show Recommendation'):
         city=city,
         state=state
     )
-    
-    st.subheader('Recommended Jobs:')
-    
-if recommended_jobs is None or recommended_jobs.empty:
+
+st.subheader('Recommended Jobs:')
+
+if recommended_jobs.empty:
     st.write("No matching jobs found.")
 else:
     for _, job in recommended_jobs.iterrows():
-        # Display job details, including experience years and salary formatted as requested
         st.write(f"**Job Title:** {job['job_title']}")
         st.write(f"**Company:** {job['company']}")
-        st.write(f"**Average Salary:** ${job['avg_salary']:.0f}K")  # Format salary to 'K'
+        st.write(f"**Average Salary:** ${job['avg_salary']:.0f}K")
         st.write(f"**Experience Required:** {job['experience_years']} years")
         st.write("---")
