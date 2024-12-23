@@ -103,7 +103,7 @@ if recommended_jobs.empty:
     st.write("No matching jobs found.")
 else:
     for _, job in recommended_jobs.iterrows():
-        st.write(f"**Job Title:** {job['jobtitle']}")
+        st.write(f"**Job Title:** {job['job_title']}")
         st.write(f"**Company:** {job['company']}")
         st.write(f"**Average Salary:** ${job['avg_salary']:,.2f}")
         st.write("---")
