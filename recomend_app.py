@@ -70,7 +70,9 @@ def get_recommendations(experience_years, desired_salary, skills, city, state, s
 
     # Return top 15 recommended job titles
     return glassdoor_clean.iloc[sorted_indices[:15]][['job_title', 'company', 'avg_salary']]
-  
+
+recommended_jobs = None  # Initialize the variable
+
 st.header('Data Science Jobs Recommender')
 recommended_jobs = None  # Initialize the variable
 
@@ -100,7 +102,7 @@ if st.button('Show Recommendation'):
         state=state
     )
 st.subheader('Recommended Jobs:')
-if recommended_jobs.empty:
+if recommended_jobs is None or recommended_jobs.empty:
     st.write("No matching jobs found.")
 else:
     for _, job in recommended_jobs.iterrows():
