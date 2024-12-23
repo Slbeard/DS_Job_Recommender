@@ -69,7 +69,7 @@ def get_recommendations(experience_years, desired_salary, skills, city, state, s
     sorted_indices = np.argsort(average_similarity)[::-1]  # Sort by descending similarity
 
     # Return top 15 recommended job titles
-    return glassdoor_clean['jobtitle'].iloc[sorted_indices[:15]]
+    return glassdoor_clean['job_title'].iloc[sorted_indices[:15]]
   
 st.header('Data Science Jobs Recommender')
 
