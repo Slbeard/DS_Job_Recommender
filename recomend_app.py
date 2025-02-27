@@ -117,9 +117,7 @@ if st.button('Show Recommendation'):
     recommended_jobs = get_recommendations(
         experience_years=experience_years,
         desired_salary=desired_salary,
-        skills=skills,
-        city=city,
-        state=state
+        skills=skills
     )
 
 st.subheader('Recommended Jobs:')
