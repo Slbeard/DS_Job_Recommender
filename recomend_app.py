@@ -1,47 +1,45 @@
-import pandas as pd  # for data structure and manipulation
-import numpy as np  # for analytics and computing
-from sklearn.feature_extraction.text import TfidfVectorizer  # for text classification, clustering, and info retrieval
-from sklearn.metrics.pairwise import cosine_similarity  # for non-linear similarity measure
-from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import OneHotEncoder
+import pandas as pd
+import numpy as np
+import streamlit as st
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
-import streamlit as st  # for web app
 
-# Read and preprocess the data
+# Read the dataset
 glassdoor_clean = pd.read_csv('glassdoor_clean.csv', encoding='utf-8')
 
-# Preprocessing for numerical features (years of experience and salary)
+# Preprocessing for numerical features
 numerical_features = ['experience_years', 'python', 'r_script', 'spark', 'aws', 'excel', 'avg_salary']
 numerical_transformer = StandardScaler()
 
-# Preprocessing for categorical columns (skills, city, state)
+# Preprocessing for categorical columns
 categorical_features = ['city', 'state']
 categorical_transformer = OneHotEncoder(handle_unknown='ignore')
 
-text_features = 'job_description'
-text_transformer = TfidfVectorizer()
-
-# Combine all preprocessing steps using ColumnTransformer
+# Combine numerical and categorical transformations
 preprocessor = ColumnTransformer(
     transformers=[
         ('num', numerical_transformer, numerical_features),
-        ('cat', categorical_transformer, categorical_features),
-        ('text', text_transformer, text_features)
+        ('cat', categorical_transformer, categorical_features)
     ],
-    remainder='drop'  # Drop other columns not specified in transformers
+    remainder='drop'
 )
 
-# Apply transformations to your dataset
-X = preprocessor.fit_transform(glassdoor_clean)
+# Apply transformations to numerical and categorical features
+X_numeric_cat = preprocessor.fit_transform(glassdoor_clean)
 
-# Calculate cosine similarity between the jobs
+# Separate text feature processing
+text_transformer = TfidfVectorizer()
+X_text = text_transformer.fit_transform(glassdoor_clean['job_description'].fillna(''))
+
+# Combine all transformed features
+X = np.hstack([X_numeric_cat.toarray(), X_text.toarray()])
+
+# Compute similarity matrix
 similarity_matrix = cosine_similarity(X)
 
-# Mapping job titles to indices
-indices = pd.Series(glassdoor_clean.index, index=glassdoor_clean['job_title']).drop_duplicates()
-
-def get_recommendations(experience_years, desired_salary, skills, city, state, similarity_matrix=similarity_matrix):
-    # Initial DataFrame for filtering
+def get_recommendations(experience_years, desired_salary, skills, city, state):
     filtered_jobs = glassdoor_clean.copy()
 
     # Filter jobs based on experience and salary
@@ -50,84 +48,52 @@ def get_recommendations(experience_years, desired_salary, skills, city, state, s
         (filtered_jobs['avg_salary'] >= desired_salary)
     ]
     
-    st.write(f"Filtered jobs after experience and salary: {filtered_jobs.shape[0]} jobs.")
+    # Normalize skill column names for filtering
+    skills = [skill.lower() for skill in skills]
+    available_skills = [col for col in skills if col in filtered_jobs.columns]
+    
+    if available_skills:
+        for skill in available_skills:
+            filtered_jobs = filtered_jobs[filtered_jobs[skill] == 1]
 
-    # Check for matching skills
-    if skills:
-        for skill in skills:
-            filtered_jobs = filtered_jobs[filtered_jobs[skill.lower()] == 1]  # Assuming binary skill columns
-        st.write(f"Filtered jobs after skills: {filtered_jobs.shape[0]} jobs.")
-
-    # Filter by city and state (if provided)
+    # Filter by city and state
     if city:
         filtered_jobs = filtered_jobs[filtered_jobs['city'].str.contains(city, case=False, na=False)]
-        st.write(f"Filtered jobs after city filter: {filtered_jobs.shape[0]} jobs.")
     if state:
         filtered_jobs = filtered_jobs[filtered_jobs['state'].str.contains(state, case=False, na=False)]
-        st.write(f"Filtered jobs after state filter: {filtered_jobs.shape[0]} jobs.")
 
-    # If no jobs are left after filtering, return an empty result
     if filtered_jobs.empty:
-        st.write("No matching jobs found after filtering.")
-        return filtered_jobs  # Returning empty DataFrame if no jobs match
+        return pd.DataFrame()  # Return empty if no matches
 
     # Get indices of filtered jobs
     filtered_indices = filtered_jobs.index.tolist()
 
     # Calculate similarity for filtered jobs
-    similarity_scores = similarity_matrix[filtered_indices]
-    average_similarity = similarity_scores.mean(axis=0)  # Average similarity for each job
-    sorted_indices = np.argsort(average_similarity)[::-1]  # Sort by descending similarity
+    similarity_scores = similarity_matrix[filtered_indices].mean(axis=0)
+    sorted_indices = np.argsort(similarity_scores)[::-1]
 
-    # Ensure we do not select more jobs than are available in filtered_jobs
-    top_n = min(15, len(filtered_jobs))  # Set top_n to the lesser of 15 or the number of available jobs
+    # Ensure index mapping is valid
+    sorted_indices = [idx for idx in sorted_indices if idx in filtered_jobs.index][:15]
 
-    # Recompute sorted indices based on filtered DataFrame size
-    sorted_indices = sorted_indices[:top_n]  # Limit sorted indices to the top_n jobs
-    sorted_indices = sorted_indices[sorted_indices < len(filtered_jobs)]  # Ensure indices are within bounds
+    return filtered_jobs.loc[sorted_indices, ['job_title', 'company', 'avg_salary', 'experience_years']]
 
-    # Use the filtered_jobs index to select the top recommended jobs
-    recommended_jobs = filtered_jobs.iloc[sorted_indices]
-
-    return recommended_jobs[['job_title', 'company', 'avg_salary', 'experience_years']]
-
-recommended_jobs = None  # Initialize the variable
-
-# Streamlit app layout
+# Streamlit App
 st.header('Data Science Jobs Recommender')
 
-# User input for years of experience
-experience_years = st.number_input('Enter your years of work experience:', min_value=0, max_value=50, value=1)
+experience_years = st.number_input('Enter your years of experience:', min_value=0, max_value=50, value=1)
+desired_salary = st.number_input('Enter your desired salary (in thousands):', min_value=0, value=50)
 
-# User input for desired salary (in thousands)
-desired_salary = st.number_input('Enter your desired salary in thousands (to the nearest $1K):', min_value=0, value=50000)
-
-# User input for skills
-skills = st.multiselect(
-    'Select your skills:',
-    options=['Python', 'R_Script', 'Spark', 'AWS', 'Excel']
-)
-
-# User input for city and state
+skills = st.multiselect('Select your skills:', options=['Python', 'R_Script', 'Spark', 'AWS', 'Excel'])
 city = st.text_input('Enter your preferred city:')
 state = st.text_input('Enter your preferred state:')
 
-# Display recommendations on button click
 if st.button('Show Recommendation'):
-    recommended_jobs = get_recommendations(
-        experience_years=experience_years,
-        desired_salary=desired_salary,
-        skills=skills
-    )
+    recommended_jobs = get_recommendations(experience_years, desired_salary, skills, city, state)
 
-st.subheader('Recommended Jobs:')
-
-if recommended_jobs is None or recommended_jobs.empty:
-    st.write("No matching jobs found.")
-else:
-    for _, job in recommended_jobs.iterrows():
-        st.write(f"**Job Title:** {job['job_title']}")
-        st.write(f"**Company:** {job['company']}")
-        st.write(f"**Average Salary:** ${job['avg_salary']:.0f}K")
-        st.write(f"**Experience Required:** {job['experience_years']} years")
-        st.write("---")
+    if recommended_jobs.empty:
+        st.write("No matching jobs found.")
+    else:
+        for _, job in recommended_jobs.iterrows():
+            st.write(f"**{job['job_title']}** at **{job['company']}**")
+            st.write(f"💰 **Salary:** ${job['avg_salary']:.0f}K | 🎓 **Experience Required:** {job['experience_years']} years")
+            st.write("---")
